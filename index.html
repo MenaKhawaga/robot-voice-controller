@@ -78,6 +78,25 @@
         <button id="mic-btn" >🎙️</button>
         <div id="transcript">Click the mic to give a command</div>
         <div id="connection-status">Checking connection...</div>
+        
+        <div id="instructions" style="margin-top: 20px; font-size: 0.9em; text-align: left; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 10px;">
+            <h4 style="margin-top: 0;">How to connect to your NodeMCU:</h4>
+            <ol style="padding-left: 20px;">
+                <li>Power on your NodeMCU robot</li>
+                <li>Connect to the WiFi network created by NodeMCU (usually named "Robot_AP")</li>
+                <li>Click the ⚙️ Settings button below</li>
+                <li>Enter the NodeMCU's IP address (default is 192.168.4.1)</li>
+                <li>Click Save and wait for connection</li>
+            </ol>
+            <div style="margin-top: 10px; padding: 5px; background: rgba(255, 200, 0, 0.2); border-radius: 5px;">
+                <strong>⚠️ GitHub Pages Note:</strong> When using this page from GitHub (https), you may need to:
+                <ol style="padding-left: 20px;">
+                    <li>Click the lock/shield icon in your browser's address bar</li>
+                    <li>Allow "insecure content" or "mixed content" for this site</li>
+                    <li>Or use the page in HTTP mode by changing https:// to http:// in the URL</li>
+                </ol>
+            </div>
+        </div>
 
         </div>
 
@@ -101,21 +120,63 @@
             const micButton = document.getElementById("mic-btn")
             const transcriptDiv = document.getElementById("transcript")
             
-            // Default robot IP - can be configured
-            const robotIP = "192.168.4.1";
+            // Robot IP configuration - stored in localStorage for persistence
+            let robotIP = localStorage.getItem('robotIP') || "192.168.4.1";
             let isConnected = false;
+            
+            // Create settings panel for IP configuration
+            const settingsHTML = `
+                <div id="settings-panel" style="display: none; margin-top: 20px;">
+                    <input type="text" id="ip-input" placeholder="Robot IP Address" value="${robotIP}">
+                    <button id="save-ip">Save</button>
+                </div>
+                <button id="settings-toggle" style="margin-top: 15px; background: rgba(255,255,255,0.2); border: none; padding: 5px 10px; border-radius: 5px; color: white; cursor: pointer;">⚙️ Settings</button>
+            `;
+            document.querySelector('.card').insertAdjacentHTML('beforeend', settingsHTML);
+            
+            // Settings toggle functionality
+            document.getElementById('settings-toggle').addEventListener('click', () => {
+                const panel = document.getElementById('settings-panel');
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            });
+            
+            // Save IP functionality
+            document.getElementById('save-ip').addEventListener('click', () => {
+                const newIP = document.getElementById('ip-input').value.trim();
+                if (newIP) {
+                    robotIP = newIP;
+                    localStorage.setItem('robotIP', robotIP);
+                    checkConnection();
+                    document.getElementById('settings-panel').style.display = 'none';
+                }
+            });
             
             // Check connection on page load
             checkConnection();
             
-            function checkConnection() {
-                fetch(`http://${robotIP}/`, { mode: 'no-cors', timeout: 3000 })
-                    .then(() => {
-                        updateConnectionStatus(true);
-                    })
-                    .catch(() => {
+            // Connection check with retry mechanism
+            function checkConnection(retryCount = 0, maxRetries = 3) {
+                const statusDiv = document.getElementById("connection-status");
+                statusDiv.textContent = "Checking connection...";
+                statusDiv.className = "";
+                
+                // Try to use protocol that matches the current page (HTTPS for GitHub Pages, HTTP for local)
+                const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+                fetch(`${protocol}//${robotIP}/`, { 
+                    mode: 'no-cors', 
+                    timeout: 3000 
+                })
+                .then(() => {
+                    updateConnectionStatus(true);
+                })
+                .catch(() => {
+                    if (retryCount < maxRetries) {
+                        statusDiv.textContent = `Connection failed. Retrying (${retryCount + 1}/${maxRetries})...`;
+                        setTimeout(() => checkConnection(retryCount + 1, maxRetries), 2000);
+                    } else {
                         updateConnectionStatus(false);
-                    });
+                    }
+                });
             }
             
             function updateConnectionStatus(connected) {
@@ -125,8 +186,13 @@
                     statusDiv.textContent = "Connected to Robot";
                     statusDiv.className = "connected";
                 } else {
-                    statusDiv.textContent = "Disconnected - Check Robot Power";
+                    statusDiv.innerHTML = "Disconnected - <button id='reconnect-btn' style='background: rgba(255,255,255,0.3); border: none; padding: 2px 8px; border-radius: 5px; color: white; cursor: pointer;'>Reconnect</button>";
                     statusDiv.className = "disconnected";
+                    
+                    // Add reconnect button functionality
+                    document.getElementById('reconnect-btn').addEventListener('click', () => {
+                        checkConnection();
+                    });
                 }
             }
 
@@ -162,7 +228,9 @@
                     
                     transcriptDiv.textContent = "Sending command: " + command;
                     
-                    fetch(`http://${robotIP}/cmd?cmd=${command}`)
+                    // Use the same protocol as the page
+                    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+                    fetch(`${protocol}//${robotIP}/cmd?cmd=${command}`)
                     .then(res => {
                         if (!res.ok) {
                             throw new Error(`HTTP error! Status: ${res.status}`);
