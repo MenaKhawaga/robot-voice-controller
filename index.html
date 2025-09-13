@@ -1,129 +1,204 @@
- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robot Voice Controller</title>
-       <style>
-        body {
-            margin: 0;
-            height: 100vh;            /* make the body take the full height of the screen */
-            display: flex;            /* turn the body into a Flex Container */
-            justify-content: center;  /* center the card horizontally */
-            align-items: center;      /* center the card vertically */            background-image: linear-gradient(90deg, #A100FFFF 0%, #71C4FFFF 100%);
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 0 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            padding:40px;
-        }
-
-
-        #mic-btn {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background-color: #ffffff;
-            border: none;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 65px; 
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            margin: 0 auto;
-
-        }
-
-         #mic-btn:hover {
-            transform: scale(1.3);
-        } 
-        
-       
-        
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Robot Voice Controller</title>
+          <style>
+            body {
+                margin: 0;
+                height: 100vh;            /* make the body take the full height of the screen */
+                display: flex;            /* turn the body into a Flex Container */
+                justify-content: center;  /* center the card horizontally */
+                align-items: center;      /* center the card vertically */
+                background-image: linear-gradient(90deg, #A100FFFF 0%, #71C4FFFF 100%);
+                color: #ffffff;
+                text-align: center;
             }
-            70% {
-                box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
+
+            .card {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                box-shadow: 0 0 32px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                padding:40px;
             }
-            100% {
-                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+
+
+            #mic-btn {
+                width: 100px;
+                height: 100px;
+                border-radius: 50%;
+                background-color: #ffffff;
+                border: none;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-size: 65px; 
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                margin: 0 auto;
+
             }
-        }
+
+            #mic-btn:hover {
+                transform: scale(1.3);
+            } 
+            
+          
+            
+            @keyframes pulse {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+                }
+                70% {
+                    box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+                }
+            }
+            
+            .listening {
+                animation: pulse 2s infinite; 
+            }
+            
+            #transcript {
+                margin-top: 30px;
+                font-size: 1.2em;
+            }
+        </style>
         
-        .listening {
-            animation: pulse 2s infinite; 
-        }
-        
-        #transcript {
-            margin-top: 30px;
-            font-size: 1.2em;
-        }
-    </style>
-    
-</head>
-<body>
-   
-    <div class="card">
+    </head>
+    <body>
+      
+        <div class="card">
 
-    <h1 >Robot Voice Controller 🤖</h1>
-    <h3> Say: Go ahead - Go back - Turn left - Turn right </h3>
-    <button id="mic-btn" >🎙️</button>
-    <div id="transcript">Click the mic to give a command</div>
+        <h1 >Robot Voice Controller 🤖</h1>
+        <h3> Say: Go ahead - Go back - Turn left - Turn right - Stop </h3>
+        <button id="mic-btn" >🎙️</button>
+        <div id="transcript">Click the mic to give a command</div>
+        <div id="connection-status">Checking connection...</div>
 
-    </div>
+        </div>
 
-     <script>
-        const micButton = document.getElementById("mic-btn")
-        const transcriptDiv = document.getElementById("transcript")
+        <style>
+            #connection-status {
+                margin-top: 15px;
+                font-size: 0.9em;
+                color: #ffffff;
+                padding: 5px 10px;
+                border-radius: 10px;
+                display: inline-block;
+            }
+            .connected {
+                background-color: rgba(0, 255, 0, 0.3);
+            }
+            .disconnected {
+                background-color: rgba(255, 0, 0, 0.3);
+            }
+        </style>
+        <script>
+            const micButton = document.getElementById("mic-btn")
+            const transcriptDiv = document.getElementById("transcript")
+            
+            // Default robot IP - can be configured
+            const robotIP = "192.168.4.1";
+            let isConnected = false;
+            
+            // Check connection on page load
+            checkConnection();
+            
+            function checkConnection() {
+                fetch(`http://${robotIP}/`, { mode: 'no-cors', timeout: 3000 })
+                    .then(() => {
+                        updateConnectionStatus(true);
+                    })
+                    .catch(() => {
+                        updateConnectionStatus(false);
+                    });
+            }
+            
+            function updateConnectionStatus(connected) {
+                isConnected = connected;
+                const statusDiv = document.getElementById("connection-status");
+                if (connected) {
+                    statusDiv.textContent = "Connected to Robot";
+                    statusDiv.className = "connected";
+                } else {
+                    statusDiv.textContent = "Disconnected - Check Robot Power";
+                    statusDiv.className = "disconnected";
+                }
+            }
 
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = "en-US"; 
+            recognition.continuous = false;
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = "en-US"; 
-        recognition.continuous = false;
-
-        recognition.onstart = function(){
-            micButton.classList.add('listening');
-            transcriptDiv.textContent = "Listening....";
-        };
-
-        recognition.onresult = function(event){
-
-            let transcript = event.results[0][0].transcript;
-            transcript = transcript.replace(/[".]/g, '');     // Remove all double quotes and periods
-            transcriptDiv.textContent = `You said: ${transcript}`;
-            // console.log('event',event);
-        };
-
-        recognition.onend = function(){
-            micButton.classList.remove('listening');
-        };
-
-         recognition.onerror = function(event) {
-                transcriptDiv.textContent = 'Error occurred: ' + event.error;
+            recognition.onstart = function(){
+                micButton.classList.add('listening');
+                transcriptDiv.textContent = "Listening....";
             };
 
-        micButton.addEventListener('click', () => {
-        recognition.start();
-        });
+            recognition.onresult = function(event){
+                let transcript = event.results[0][0].transcript.toLowerCase();
+
+                transcript = transcript.replace(/[".]/g, '');     // Remove all double quotes and periods
+                transcriptDiv.textContent = `You said: ${transcript}`;
+                
+                let command = '';
+                if(transcript.includes('go ahead')) command = "forward";
+                else if(transcript.includes("go back")) command = "backward";
+                else if(transcript.includes("turn right")) command = "right";
+                else if(transcript.includes("turn left")) command = "left";
+                else if(transcript.includes("stop")) command = "stop";
+
+                if(command) {
+                    if (!isConnected) {
+                        transcriptDiv.textContent = "Cannot send command: Robot not connected";
+                        checkConnection(); // Try to reconnect
+                        return;
+                    }
+                    
+                    transcriptDiv.textContent = "Sending command: " + command;
+                    
+                    fetch(`http://${robotIP}/cmd?cmd=${command}`)
+                    .then(res => {
+                        if (!res.ok) {
+                            throw new Error(`HTTP error! Status: ${res.status}`);
+                        }
+                        return res.text();
+                    })
+                    .then(data => {
+                        console.log(data);
+                        transcriptDiv.textContent = "Robot Status: " + data;
+                        updateConnectionStatus(true);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        transcriptDiv.textContent = "Error: Could not send command to robot";
+                        updateConnectionStatus(false);
+                    });
+                }
+            };
+
+            recognition.onend = function(){
+                micButton.classList.remove('listening');
+            };
+
+            recognition.onerror = function(event) {
+                    transcriptDiv.textContent = 'Error occurred: ' + event.error;
+                };
+
+            micButton.addEventListener('click', () => {
+            recognition.start();
+            });
 
 
-        
+            
 
-    </script>
-
-
-</body>
-</html>
+        </script>
 
 
+    </body>
+    </html>
